@@ -10,6 +10,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Sanitize an OAuth2 state parameter without changing semantic content.
+ *
+ * RFC 6749 requires the authorization server to return `state` unchanged.
+ * So we avoid broad text sanitizers that can rewrite characters (for example,
+ * dropping encoded padding), and only strip control bytes to prevent header or
+ * log injection vectors.
+ *
+ * @param string $state Raw state value.
+ * @return string Sanitized state.
+ */
+function keystone_oidc_sanitize_oauth2_state( $state ) {
+	$state = (string) $state;
+
+	// Keep state stable, only remove control characters.
+	$state = preg_replace( '/[\x00-\x1F\x7F]/', '', $state );
+
+	// Cap size to avoid abuse while staying far above practical OAuth2 states.
+	if ( strlen( $state ) > 2048 ) {
+		return '';
+	}
+
+	return $state;
+}
+
 class KEYSTONE_OIDC_Provider {
 	const ENDPOINT_BASE_PATH = 'wenisch-tech/keystone-oidc';
 
@@ -187,12 +212,12 @@ class KEYSTONE_OIDC_Provider {
 		$client_id             = isset( $_GET['client_id'] ) ? sanitize_text_field( wp_unslash( $_GET['client_id'] ) ) : '';
 		$redirect_uri          = isset( $_GET['redirect_uri'] ) ? esc_url_raw( wp_unslash( $_GET['redirect_uri'] ) ) : '';
 		$scope                 = isset( $_GET['scope'] ) ? sanitize_text_field( wp_unslash( $_GET['scope'] ) ) : 'openid';
-		$state                 = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+		$state                 = isset( $_GET['state'] ) ? keystone_oidc_sanitize_oauth2_state( wp_unslash( $_GET['state'] ) ) : '';
 		$nonce                 = isset( $_GET['nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['nonce'] ) ) : null;
 		$code_challenge        = isset( $_GET['code_challenge'] ) ? sanitize_text_field( wp_unslash( $_GET['code_challenge'] ) ) : null;
 		$code_challenge_method = isset( $_GET['code_challenge_method'] ) ? sanitize_text_field( wp_unslash( $_GET['code_challenge_method'] ) ) : null;
 		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] ) {
-			$state                 = isset( $_POST['state'] ) ? sanitize_text_field( wp_unslash( $_POST['state'] ) ) : $state;
+			$state                 = isset( $_POST['state'] ) ? keystone_oidc_sanitize_oauth2_state( wp_unslash( $_POST['state'] ) ) : $state;
 			$nonce                 = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : $nonce;
 			$code_challenge        = isset( $_POST['code_challenge'] ) ? sanitize_text_field( wp_unslash( $_POST['code_challenge'] ) ) : $code_challenge;
 			$code_challenge_method = isset( $_POST['code_challenge_method'] ) ? sanitize_text_field( wp_unslash( $_POST['code_challenge_method'] ) ) : $code_challenge_method;

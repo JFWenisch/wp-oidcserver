@@ -2,7 +2,7 @@
 Contributors: jfwenisch
 Tags: oidc, openid-connect, sso, authentication, oauth2
 Requires at least: 5.6
-Tested up to: 7.0.1
+Tested up to: 7.1
 Stable tag: 2.3.3
 Requires PHP: 7.4
 License: GPLv2 or later
